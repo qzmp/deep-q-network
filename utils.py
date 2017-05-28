@@ -11,10 +11,8 @@ class ExperienceBuffer:
         # if len(self.buffer) + len(experience) >= self.buffer_size:
         #     self.buffer[0:len(experience) + len(self.buffer) - self.buffer_size] = []
         # self.buffer.extend(experience)
-        if experience.size == 0:
-            return
         if len(self.buffer) > self.buffer_size:
-            self.buffer[0] = []
+            del self.buffer[0]
         self.buffer.append(experience)
 
     def sample(self, size):
