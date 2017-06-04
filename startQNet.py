@@ -1,16 +1,18 @@
 import gym
 import tensorflow as tf
 
-from QNetwork import QNetwork, SimpleQNetwork
+from QNetwork import SimpleQNetwork
+from EnvWrapper import PongWrapper
 from utils import *
 
 NUMBER_OF_EPISODES = 10000
 BATCH_SIZE = 32
 UPDATE_FREQUENCY = 4
 
-env = gym.make('Pong-v0')
+env = PongWrapper()
+state = env.reset()
 tf.reset_default_graph()
-mainQN = SimpleQNetwork(input_shape= env.observation_space.shape, num_out=env.action_space.n)
+mainQN = SimpleQNetwork(input_shape=state.shape, num_out=env.action_space.n, dueling=True)
 init = tf.global_variables_initializer()
 
 with tf.Session() as sess:
@@ -33,7 +35,7 @@ with tf.Session() as sess:
             else:
                 action = sess.run(mainQN.predict, feed_dict={mainQN.scalarInput: [state]})[0]
             # step action, actualize episode values
-            state_next, reward, done, unknown_dict = env.step(action)
+            state_next, reward, done = env.step(action)
             if reward != 0.0:
                 reward_list.append(reward)
             episodeBuffer.add(np.array([state, action, reward, state_next]))
