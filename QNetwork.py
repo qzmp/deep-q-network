@@ -50,7 +50,7 @@ class SimpleQNetwork:
     def __init__(self, input_shape=(210, 160, 3), num_out=6):
         # The network recieves a frame from the game, flattened into an array.
         # It then resizes it and processes it through four convolutional layers.
-        self.scalarInput = tf.placeholder(shape=(-1, ) + input_shape, dtype=tf.float32)
+        self.scalarInput = tf.placeholder(shape=(None, ) + input_shape, dtype=tf.float32)
         self.imageIn = tf.reshape(self.scalarInput, shape=(-1, ) + input_shape)
         self.conv1 = slim.conv2d(self.imageIn, num_outputs=32, kernel_size=(8, 8), stride=(4, 4), padding='VALID',
                                  biases_initializer=None)
@@ -77,5 +77,5 @@ class SimpleQNetwork:
 
         self.td_error = tf.square(self.targetQ - self.Q)
         self.loss = tf.reduce_mean(self.td_error)
-        self.trainer = tf.train.AdamOptimizer(learning_rate=0.001)
+        self.trainer = tf.train.AdamOptimizer(learning_rate=0.01)
         self.updateModel = self.trainer.minimize(self.loss)
