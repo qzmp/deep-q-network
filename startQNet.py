@@ -5,7 +5,6 @@ from QNetwork import QNetwork, SimpleQNetwork
 from utils import *
 
 NUMBER_OF_EPISODES = 10000
-PRE_TRAIN_STEPS = 100
 BATCH_SIZE = 32
 UPDATE_FREQUENCY = 4
 
@@ -41,12 +40,14 @@ with tf.Session() as sess:
             total_steps += 1
             state = state_next
             # update network in intervals
-            if total_steps >= PRE_TRAIN_STEPS and total_steps % UPDATE_FREQUENCY == 0:
+            if len(episodeBuffer) >= BATCH_SIZE and total_steps % UPDATE_FREQUENCY == 0:
                 train_batch = episodeBuffer.sample(BATCH_SIZE)
                 loss, _ = sess.run([mainQN.loss, mainQN.updateModel],
                                    feed_dict={mainQN.scalarInput: np.stack(train_batch[:, 0]),
+                                              mainQN.actions: np.stack(train_batch[:, 1]),
                                               mainQN.targetQ: np.stack(train_batch[:, 2]),
-                                              mainQN.actions: np.stack(train_batch[:, 1])})
+                                              }
+                                   )
                 loss_list.append(loss)
             # end of episode
             if done:
