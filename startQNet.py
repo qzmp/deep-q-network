@@ -10,7 +10,7 @@ UPDATE_FREQUENCY = 4
 
 env = gym.make('Pong-v0')
 tf.reset_default_graph()
-mainQN = SimpleQNetwork(num_out=env.action_space.n)
+mainQN = SimpleQNetwork(input_shape= env.observation_space.shape, num_out=env.action_space.n)
 init = tf.global_variables_initializer()
 
 with tf.Session() as sess:

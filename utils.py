@@ -3,7 +3,7 @@ from random import random, sample
 
 
 class ExperienceBuffer:
-    def __init__(self, buffer_size=5000):
+    def __init__(self, buffer_size=1000):
         self.buffer = []
         self.buffer_size = buffer_size
 
