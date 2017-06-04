@@ -18,10 +18,13 @@ class ExperienceBuffer:
     def sample(self, size):
         return np.array(sample(self.buffer, size))
 
+    def __len__(self):
+        return len(self.buffer)
+
 
 class RandomActionChance:
     def __init__(self):
-        self.startE = 1  # Starting chance of random action
+        self.startE = 1.0  # Starting chance of random action
         self.endE = 0.01  # Final chance of random action
         self.anneling_steps = 1000  # How many steps of training to reduce startE to endE.
         # Set the rate of random action decrease.
