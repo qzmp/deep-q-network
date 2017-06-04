@@ -5,6 +5,8 @@ import numpy as np
 class PongWrapper:
     def __init__(self):
         self.env = gym.make("Pong-v0")
+        self.state_shape = self.reset().shape
+        self.input_num = self.env.action_space.n
 
     @staticmethod
     def _process_state(state):
