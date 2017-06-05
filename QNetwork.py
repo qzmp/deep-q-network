@@ -30,7 +30,7 @@ class SimpleQNetwork:
 
         # Values for learning
         self.targetQ = tf.placeholder(shape=[None], dtype=tf.float32)
-        self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
+        self.actions = tf.placeholder(shape=[None], dtype=tf.int64)
         self.actions_onehot = tf.one_hot(self.actions, num_out, dtype=tf.float32)
 
         # Learning values
@@ -39,3 +39,8 @@ class SimpleQNetwork:
         self.loss = tf.reduce_mean(self.td_error)
         self.trainer = tf.train.AdadeltaOptimizer(learning_rate=0.01)
         self.updateModel = self.trainer.minimize(self.loss)
+
+        # For summary
+        with tf.name_scope('Accuracy'):
+            acc = tf.equal(self.predict, self.actions)
+            self.acc = tf.reduce_mean(tf.cast(acc, tf.float32))
