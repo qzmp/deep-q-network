@@ -1,6 +1,7 @@
+import logging
 import os
+import sys
 
-import gym
 import tensorflow as tf
 
 from QNetwork import SimpleQNetwork
@@ -9,24 +10,39 @@ from utils import *
 
 NUMBER_OF_EPISODES = 10000
 BATCH_SIZE = 32
-UPDATE_FREQUENCY = 4
 
 env = PongWrapper()
 state = env.reset()
+
 tf.reset_default_graph()
-mainQN = SimpleQNetwork(input_shape=state.shape, num_out=env.action_space.n, dueling=True)
+if "dueling" in sys.argv:
+    mainQN = SimpleQNetwork(input_shape=state.shape, num_out=env.action_space.n, dueling=True)
+    path = "logs/dueling"
+else:
+    mainQN = SimpleQNetwork(input_shape=state.shape, num_out=env.action_space.n, dueling=False)
+    path = "logs/simple"
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.FileHandler(os.path.join(path, "log.log")))
+logger.setLevel(logging.INFO)
+
 init = tf.global_variables_initializer()
 
-# path = "logs/dueling"
 tf.summary.scalar("loss", mainQN.loss)
 tf.summary.scalar("acc", mainQN.acc)
 merged = tf.summary.merge_all()
-writer = tf.summary.FileWriter("/tmp/tensorflow_logs", graph=tf.get_default_graph())
+writer = tf.summary.FileWriter(os.path.join(path, "tensorflow_logs"), graph=tf.get_default_graph())
+saver = tf.train.Saver()
 
 with tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))) as sess:
     sess.run(init)
 
-    total_steps = 0
+    if tf.train.latest_checkpoint(path) is not None:
+        saver.restore(sess, tf.train.latest_checkpoint(path))
+        logger.info('Loading checkpoint')
+    else:
+        logger.info('Starting new learning')
+
     episodeBuffer = ExperienceBuffer()
     random_action = RandomActionChance()
     for i in range(NUMBER_OF_EPISODES):
@@ -37,20 +53,18 @@ with tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=Tru
         reward_list = []
         while not done:
             # decide if do random action or network action
-            if random_action.do_random_action() and total_steps == 0:
+            if random_action.do_random_action():
                 action = env.action_space.sample()
                 random_action.step_down()
             else:
                 action = sess.run(mainQN.predict, feed_dict={mainQN.scalarInput: [state]})[0]
             # step action, actualize episode values
             state_next, reward, done = env.step(action)
-            # if reward != 0.0:
             reward_list.append(reward)
             episodeBuffer.add(np.array([state, action, reward, state_next]))
-            total_steps += 1
             state = state_next
             # update network in intervals
-            if len(episodeBuffer) >= BATCH_SIZE and total_steps % UPDATE_FREQUENCY == 0:
+            if len(episodeBuffer) >= BATCH_SIZE:
                 train_batch = episodeBuffer.sample(BATCH_SIZE)
                 predicted_reward = sess.run(mainQN.Qout, feed_dict={mainQN.scalarInput: np.stack(train_batch[:, 3])})
                 rewards = []
@@ -65,9 +79,11 @@ with tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=Tru
                                                        mainQN.targetQ: rewards,
                                                        }
                                             )
-                writer.add_summary(summary, total_steps)
+                writer.add_summary(summary, i)
                 loss_list.append(loss)
             # end of episode
             if done:
-                print(i, total_steps, np.mean([t for t in reward_list if t != 0.0]), np.mean(loss_list))
-                break
+                logger.info(
+                    ";".join([str(i), str(np.mean([t for t in reward_list if t != 0.0])), str(np.mean(loss_list))]))
+                if i % 50 == 0:
+                    saver.save(sess, os.path.join(path, 'model'), i)

@@ -37,7 +37,7 @@ class SimpleQNetwork:
         self.Q = tf.reduce_sum(self.Qout * self.actions_onehot, axis=1)
         self.td_error = tf.square(self.targetQ - self.Q)
         self.loss = tf.reduce_mean(self.td_error)
-        self.trainer = tf.train.AdadeltaOptimizer(learning_rate=0.01)
+        self.trainer = tf.train.AdadeltaOptimizer(learning_rate=0.03)
         self.updateModel = self.trainer.minimize(self.loss)
 
         # For summary
