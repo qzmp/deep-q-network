@@ -1,0 +1,4 @@
+summary
+*.py[cod]
+.DS_Store
+.Python
