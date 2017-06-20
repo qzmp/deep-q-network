@@ -148,6 +148,8 @@ Bardzo pomocne w rozwoju kolejnych modeli może okazać się Universe od OpenAI.
 
 Obie wspomniane firmy twierdzą jednak że nauka obsługi gier nie jest celem a jedynie drogą do niego. Głównym dążeniem jest stworzenie modelu,  która będzie w stanie szybko zaznajomić się z nieznanym otoczeniem i nauczyć poruszać się w jego zakresie. Będzie to duży krok w kierunku zbudowania silnej sztucznej inteligencji.
 
+\section{Q-learning}
+
 Do uczenie ze wzmocnieniem powszechnie wykorzystywana jest technika zwana \textit{q-learningiem}. Próbuje ona nauczyć się, jaka jest wartość w przebywaniu w danym stanie i podjęcia tam określonej akcji. Funkcja, która określa te wartości nazywana jest funkcją akcji. Aktualizacja wartości funkcji dla danego stanu odbywa się dopiero po poznaniu wyników każdej możliwej akcji - akcje które poprawiły stan są nagradzane, podczas gry te które stan pogorszyły są karane poprzez modyfikację ich wag. Idea tego algorytmu jest oparta o równanie Bellmana, które mówi, że długoterminowa nagroda za daną akcję jest równa natychmiastowej nagrodzie za aktualną akcję połączoną z przewidywaną nagrodą za najlepszą akcję podjętą w kolejnym stanie. Przedstawia to równanie \ref{q-value}.
 \begin{equation}
 \label{q-value}
@@ -179,7 +181,7 @@ Jak już zostało wspominane, wejściem do sieci są kolejne ramki z symulacji g
 
 Odgrywanie Doświadczeń polega na przechowywaniu doświadczeń modelu i losowe wybieranie z nich paczek do trenowania sieci. Doświadczenia są przechowywane jako krotki \textless stan, akcja, nagroda, następny stan\textgreater. Poprzez wykorzystywanie losowych wspomnień, zapobiegamy uczenia się jedynie tego co jest aktualnie wykonywane w środowisku i umożliwia uczenie na bardziej zróżnicowanych doświadczeniach. Przechowywana jest tylko wcześniej ustalona liczba doświadczeń, które są wraz z upływem kolejnych epok zastępowane nowszymi.
 
-Sieć celu jest wykorzystywana do obliczenia wartości funkcji akcji, która to jest wykorzystywana do obliczenia straty każdej akcji podczas treningu. Innymi słowy służy jedynie do wyznaczenia która z dostępnych akcji jest według sieci optymalna. Nie możliwe jest wykorzystanie jednej sieci, która jednocześnie uaktualnia swoje wagi i generuje nowe wartości. Według cytowanej pracy, ze względu na ciągle zmieniające się wagi, które jednocześnie są pośrednio wykorzystywane do aktualizacji samych siebie (ponieważ wagi sieci wpływają na wynik funkcji akcji) sieć traci stabilność i przewidywane wartości mogą wymknąć się spod kontroli. Aby temu zapobiec, wagi sieci celu są stałe, jedynie co jakiś czas powoli aktualizowane do wag sieci bazowej.
+Sieć celu jest wykorzystywana do obliczenia wartości funkcji akcji, która to jest wykorzystywana do obliczenia straty każdej akcji podczas treningu. Innymi słowy służy jedynie do wyznaczenia która z dostępnych akcji jest według sieci optymalna. Niemożliwe jest wykorzystanie jednej sieci, która jednocześnie uaktualnia swoje wagi i generuje nowe wartości. Według cytowanej pracy, ze względu na ciągle zmieniające się wagi, które jednocześnie są pośrednio wykorzystywane do aktualizacji samych siebie (ponieważ wagi sieci wpływają na wynik funkcji akcji) sieć traci stabilność i przewidywane wartości mogą wymknąć się spod kontroli. Aby temu zapobiec, wagi sieci celu są stałe, jedynie co jakiś czas powoli aktualizowane do wag sieci bazowej.
 
 Pracownicy DeepMind zaprezentowali kilka usprawnień do swojego podstawowego modelu. Pierwszym z nich jest określany pojęciem Double DQN \cite{DoubleDQN:2015}. Inspirowany faktem, że w podstawowym modelu często dochodziło do sytuacji, w której wartości funkcji akcji dla poszczególnych akcji w danym stanie były przeszacowane. Nie stanowiłoby to wielkiego problemu, jeśli wszystkie akcje byłyby przeszacowane w jednakowym stopniu, jednak badania potwierdzały, że było inaczej. Częste przyznawanie większych wartości funkcji akcji nieoptymalnym akcjom sprawiało, że model miał problemy z nauczeniem się odpowiedniego postępowania. Aby zapobiec tej sytuacji, autorzy zaproponowali, aby zamiast brać maksymalną wartość funkcji akcji wygenerowaną przez sieć celu(wykorzystywaną w trenowaniu sieci głównej), sieć główna jest wykorzystywana do generowania optymalnej akcji, a sieć celu generuje wartość funkcji akcji dla tej wybranej akcji. Poprzez oddzielenie generacji optymalnej akcji od generowania jej oceny, możemy znacznie przyśpieszyć i uregulować uczenie.
 
@@ -196,7 +198,39 @@ Zaleta tego podejścia wynika z faktu, że nie w każdym momencie interesuje nas
 \end{figure}
 
 \section{Niektóre szczegóły implementacji}
-\section {Eksperymenty}
+
+Pierwsze postępy w implementacji modelu były oparte o poradnik \cite{implementation1} Dostępne w nim jest wprowadzenie do Q-learningu jak i do samego Tensorflowa. Początkowe rozdziały skupiają się na implementacji Q-learningu za pomocą tabel, jednak to rozwiązanie może być wykorzystywane tylko w najprostszych środowiskach. Następujące rozszerzenie do płytkich sieci neuronowych nie gwarantuje znacznej poprawy, ale stanowi punkt wejścia do stosowania sieci głębokich.
+
+Dużym problemem była instalacja wszystkich zależności modelu - szczególnie Gym wymaga specyficznych warunków, umożliwiając działanie tylko z językiem Python i nie posiadając wsparcia dla systemu Windows. Konieczna była instalacja Linuxa i odpowiednia konfiguracja występujących na nim sterowników. Konieczna była instalacja interfejsu Cuda, który był niezbędny aby uczyć sieć na karcie graficznej - przyspieszając proces. Jest to istotne ze względu na to, że rozpatrywany problem wymaga często kilkudziesięciogodzinnego uczenia, nawet na wydajnych kartach graficznych. 
+
+Przy instalacji wykorzystano platformę Anaconda, która umożliwia zarządzanie naukowymi bibliotekami do Pythona. Dodatkowym narzędziem był pip, pełniący podobną funkcję. 
+
+Pierwsza implementacja DQN działała na prostym środowisku, aby można było szybko wyuczyć sieć i zauważyć wpływ parametrów na działanie sieci. Kontrolowany w nim był niebieski kwadrat i celem było dotarcie do zielonego kwadratu (nagroda +1) omijając jednocześnie czerwony kwadrat (nagroda - 1) \ref{proste}. Na początku każdego epizodu kwadraty były losowo układane na planszy 5x5.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\linewidth]{testing.png}
+\caption{Proste środowisko testowe}
+\label{proste}
+\end{figure}
+
+
+Mimo że sieć w ciągu uczenia stale polepszała swoje działanie, co było obrazowane przez rosnącą średnią wartość nagrody, to na innych środowiskach, takich jak Pong, sieć nie wykazywała poprawy wraz z rosnącą liczbą epok. Ze względu na to, że istniejąca implementacja nie była napisana zbyt czytelnie, zdecydowano się na przetestowanie innej.
+
+Przystosowano \cite{implementation2}. W podanym repozytorium dostępna jest implementacja podstawowej wersji sieci oraz wariantu z rozszerzeniem Dueling. Oparta jest o interfejs Keras działający na bibliotece TensorFlow. Korzysta również z biblioteki Gym od OpenAI, co umożliwia prostą wymianę gry na której uczona jest sieć. Konieczne było jedynie zaktualizowanie projektu na nowe wersje TensorFlowa i Kerasa. Po tych modyfikacjach uruchomiono uczenie na grze Breakout, w której celem jest sterowanie paletką tak, aby odbijać nadlatującą piłkę w celu niszczenia klocków znajdujących się u góry ekranu \ref{breakout}. Niestety, ze względu na ograniczenia czasowe uruchomiono uczenie jedynie na 8 godzin, co nie pozwoliło na weryfikację działania. Artykuły wskazują, że wzrost nagrody występuje dopiero po tym okresie. Jednak inne parametry zachowywały się zgodnie z przewidywaniami - ciągle rosły średnie wartości funkcji akcji sugerując ich modyfikację. Dopiero po pewnym czasie te wartości osiągnęły by taki układ, który pozwala na podejmowanie odpowiednich decyzji.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\linewidth]{test2.png}
+\caption{Gra Breakout}
+\label{breakout}
+\end{figure}
+
+\section{Podsumowanie}
+
+Mimo niepowodzenia w kompletnym przetestowaniu modelu, można z projektu wyciągnąć pewne wnioski. Po pierwsze, testowanie DQN na prostym środowisku jest przydatne do optymalizacji parametrów, ale nie może wiarygodnie służyć do przewidywania działania na bardziej skomplikowanym środowisku. Co więcej, aby przetestować działanie sieci w domowych warunkach, konieczna jest implementacja możliwości zapisywania i wczytywania stanu sieci aby móc wznowić uczenie w czasie, gdy dostępne są do tego środki. Innym rozwiązaniem jest posiadanie dedykowanej maszyny. 
+
+Dodatkowo, praca z Kerasem okazała się dużo prostsza niż z samym TensorFlowem. Może nie jest to twierdzenie odkrywcze, ale używając jego od początku, można znacznie przyspieszyć zrozumienie modelu ułatwiając modyfikacje. 
 
 
 %% The Appendices part is started with the command \appendix;
